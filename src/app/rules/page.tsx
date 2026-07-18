@@ -28,9 +28,9 @@ export default async function RulesPage() {
     <>
       <h1>Règles d&apos;alerte</h1>
       <p className="subtitle">
-        Configure les seuils de prix d&apos;achat/vente par matériau. Une
-        alerte Telegram est envoyée quand le seuil est franchi, avec un délai
-        minimum (cooldown) entre deux alertes pour la même règle.
+        Configure les seuils de prix d&apos;achat/vente par matériau. Une alerte
+        Telegram est envoyée quand le seuil est franchi, avec un délai minimum
+        (cooldown) entre deux alertes pour la même règle.
       </p>
 
       <div className="card">

@@ -1,5 +1,6 @@
 import { getSupabaseAdmin } from "@/lib/supabase";
 import type { Item, LatestPrice } from "@/lib/types";
+import { PriceChart } from "@/components/PriceChart";
 
 export const dynamic = "force-dynamic";
 
@@ -73,6 +74,11 @@ export default async function DashboardPage() {
           )}
         </tbody>
       </table>
+
+      <h2>Historique des prix</h2>
+      {(items ?? []).map((item) => (
+        <PriceChart key={item.id} itemId={item.id} itemName={item.name} />
+      ))}
     </>
   );
 }
