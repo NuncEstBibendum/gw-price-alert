@@ -9,13 +9,32 @@ jobs:
   ingest:
     runs-on: ubuntu-latest
     steps:
+      - name: Check secrets are configured
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "::error::CRON_SECRET is empty. Check Settings > Secrets and variables > Actions > Repository secrets (not an Environment secret, not Codespaces)."
+            exit 1
+          fi
+          if [ -z "$INGEST_URL" ]; then
+            echo "::error::INGEST_URL is empty. Check Settings > Secrets and variables > Actions > Repository secrets."
+            exit 1
+          fi
+          echo "CRON_SECRET length: ${#CRON_SECRET}"
+          echo "INGEST_URL: $INGEST_URL"
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          INGEST_URL: ${{ secrets.INGEST_URL }}
+
       - name: Call ingest endpoint
         run: |
           status=$(curl -s -o /tmp/response.json -w "%{http_code}" \
-            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
-            "${{ secrets.INGEST_URL }}")
+            -H "x-cron-secret: $CRON_SECRET" \
+            "$INGEST_URL")
           echo "HTTP status: $status"
           cat /tmp/response.json
           if [ "$status" -ge 300 ]; then
             exit 1
           fi
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          INGEST_URL: ${{ secrets.INGEST_URL }}
