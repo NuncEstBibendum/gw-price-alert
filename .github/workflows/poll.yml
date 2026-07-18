@@ -1,0 +1,21 @@
+name: Poll GW prices
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Call ingest endpoint
+        run: |
+          status=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            -H "x-cron-secret: ${{ secrets.CRON_SECRET }}" \
+            "${{ secrets.INGEST_URL }}")
+          echo "HTTP status: $status"
+          cat /tmp/response.json
+          if [ "$status" -ge 300 ]; then
+            exit 1
+          fi
