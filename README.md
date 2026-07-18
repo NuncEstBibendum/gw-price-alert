@@ -36,7 +36,8 @@ GitHub Actions (cron 5min)
 
 1. Crée un projet sur [supabase.com](https://supabase.com).
 2. Dans le SQL Editor, exécute le contenu de
-   [`supabase/migrations/0001_init.sql`](supabase/migrations/0001_init.sql).
+   [`supabase/migrations/20260718000000_init.sql`](supabase/migrations/20260718000000_init.sql).
+   Tu peux aussi l'appliquer avec la Supabase CLI (voir section CLI plus bas).
    Cela crée les tables `items`, `prices`, `alert_rules`, `alert_log`, la vue
    `latest_prices`, et seed les 3 matériaux (Ecto, Monstrous Claw, Monstrous
    Fang).
@@ -44,6 +45,17 @@ GitHub Actions (cron 5min)
    - `SUPABASE_URL` (Project URL)
    - `SUPABASE_SERVICE_ROLE_KEY` (service_role secret — **jamais** exposée
      côté client, uniquement utilisée côté serveur dans cette app)
+
+#### Appliquer la migration avec la Supabase CLI (alternative au SQL Editor)
+
+```bash
+npx supabase login
+npx supabase link --project-ref <project-ref>   # ex: dutuwwdbtdnqjwqezrnx (dans l'URL https://<ref>.supabase.co)
+npx supabase db push                              # applique les migrations de supabase/migrations/
+```
+
+`link` demande le mot de passe de la base (celui généré à la création du
+projet, dispo dans *Project Settings > Database* si tu l'as perdu).
 
 ### 2. Bot Telegram
 
