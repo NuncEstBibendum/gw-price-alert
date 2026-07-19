@@ -9,6 +9,13 @@ export const maxDuration = 60;
 
 const ITEM_DELAY_MS = 2000;
 
+// gwtoolbox rate-limits after ~5-6 sequential requests regardless of spacing
+// between them, so a run only polls a rotating subset of items instead of
+// all of them. Which subset is derived from wall-clock time (no persisted
+// state needed) so it advances deterministically as the 5-minute cron ticks.
+const MAX_ITEMS_PER_RUN = 4;
+const RUN_INTERVAL_MS = 5 * 60 * 1000;
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -28,18 +35,27 @@ export async function GET(req: NextRequest) {
 
   const supabase = getSupabaseAdmin();
 
-  const { data: items, error: itemsError } = await supabase
+  const { data: allItems, error: itemsError } = await supabase
     .from("items")
     .select("*")
+    .order("id")
     .returns<Item[]>();
 
   if (itemsError) {
     return NextResponse.json({ error: itemsError.message }, { status: 500 });
   }
 
+  const items = allItems ?? [];
+  const numBatches = Math.max(1, Math.ceil(items.length / MAX_ITEMS_PER_RUN));
+  const batchIndex = Math.floor(Date.now() / RUN_INTERVAL_MS) % numBatches;
+  const batchItems = items.slice(
+    batchIndex * MAX_ITEMS_PER_RUN,
+    batchIndex * MAX_ITEMS_PER_RUN + MAX_ITEMS_PER_RUN,
+  );
+
   const results: Record<string, { inserted: number; error?: string }> = {};
 
-  for (const [index, item] of (items ?? []).entries()) {
+  for (const [index, item] of batchItems.entries()) {
     if (index > 0) {
       // Space out requests to gwtoolbox to avoid tripping its rate limit
       // when polling many items in one run.
@@ -90,6 +106,7 @@ export async function GET(req: NextRequest) {
   } catch (err) {
     return NextResponse.json(
       {
+        batch: { index: batchIndex, of: numBatches, items: batchItems.map((i) => i.id) },
         results,
         alertsError: err instanceof Error ? err.message : String(err),
       },
@@ -97,5 +114,9 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  return NextResponse.json({ results, alertsTriggered });
+  return NextResponse.json({
+    batch: { index: batchIndex, of: numBatches, items: batchItems.map((i) => i.id) },
+    results,
+    alertsTriggered,
+  });
 }

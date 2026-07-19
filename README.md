@@ -17,6 +17,15 @@ le spam).
   cron plus fréquent qu'une fois par jour, d'où ce choix.
 - **Telegram Bot API** : envoi des alertes.
 
+> **Rotation par lots** : gwtoolbox rate-limite après ~5-6 requêtes
+> séquentielles, peu importe l'espacement entre elles. `/api/ingest` ne
+> traite donc qu'un sous-ensemble d'au plus 4 matériaux par run (voir
+> `MAX_ITEMS_PER_RUN` dans [route.ts](src/app/api/ingest/route.ts)), le lot
+> étant déterminé par l'horodatage courant (pas d'état à persister). Avec 5
+> min entre chaque run, chaque matériau est donc rafraîchi toutes les
+> `5 × nombre_de_lots` minutes. Le lookback de 3 jours côté gwtoolbox comble
+> automatiquement les runs manqués.
+
 ```
 GitHub Actions (cron 5min)
         │  GET /api/ingest?secret=... (ou header x-cron-secret)
