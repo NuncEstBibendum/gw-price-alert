@@ -11,10 +11,11 @@ const ITEM_DELAY_MS = 2000;
 
 // gwtoolbox rate-limits after ~5-6 sequential requests regardless of spacing
 // between them, so a run only polls a rotating subset of items instead of
-// all of them. Which subset is derived from wall-clock time (no persisted
-// state needed) so it advances deterministically as the 5-minute cron ticks.
+// all of them. The rotation cursor is persisted in ingest_state (rather
+// than derived from wall-clock time) because GitHub Actions "on schedule"
+// runs can be delayed or skipped, which would otherwise land two
+// consecutive invocations on the same batch.
 const MAX_ITEMS_PER_RUN = 4;
-const RUN_INTERVAL_MS = 5 * 60 * 1000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -47,11 +48,31 @@ export async function GET(req: NextRequest) {
 
   const items = allItems ?? [];
   const numBatches = Math.max(1, Math.ceil(items.length / MAX_ITEMS_PER_RUN));
-  const batchIndex = Math.floor(Date.now() / RUN_INTERVAL_MS) % numBatches;
+
+  const { data: state, error: stateError } = await supabase
+    .from("ingest_state")
+    .select("last_batch")
+    .eq("id", 1)
+    .single<{ last_batch: number }>();
+
+  if (stateError) {
+    return NextResponse.json({ error: stateError.message }, { status: 500 });
+  }
+
+  const batchIndex = (state.last_batch + 1) % numBatches;
   const batchItems = items.slice(
     batchIndex * MAX_ITEMS_PER_RUN,
     batchIndex * MAX_ITEMS_PER_RUN + MAX_ITEMS_PER_RUN,
   );
+
+  const { error: advanceError } = await supabase
+    .from("ingest_state")
+    .update({ last_batch: batchIndex })
+    .eq("id", 1);
+
+  if (advanceError) {
+    return NextResponse.json({ error: advanceError.message }, { status: 500 });
+  }
 
   const results: Record<string, { inserted: number; error?: string }> = {};
 
