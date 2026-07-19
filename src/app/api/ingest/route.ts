@@ -7,6 +7,12 @@ import type { Item } from "@/lib/types";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
+const ITEM_DELAY_MS = 500;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 function isAuthorized(req: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;
   if (!secret) return false;
@@ -33,7 +39,13 @@ export async function GET(req: NextRequest) {
 
   const results: Record<string, { inserted: number; error?: string }> = {};
 
-  for (const item of items ?? []) {
+  for (const [index, item] of (items ?? []).entries()) {
+    if (index > 0) {
+      // Space out requests to gwtoolbox to avoid tripping its rate limit
+      // when polling many items in one run.
+      await sleep(ITEM_DELAY_MS);
+    }
+
     try {
       const points = await fetchPriceHistory(item.id);
 
