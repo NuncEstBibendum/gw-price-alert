@@ -26,7 +26,7 @@ export async function fetchPriceHistory(
   const res = await fetch(url, { cache: "no-store" });
 
   if (res.status === 429 && attempt < MAX_RETRIES) {
-    await sleep(1000 * (attempt + 1));
+    await sleep(2000 * (attempt + 1));
     return fetchPriceHistory(itemCode, attempt + 1);
   }
 

@@ -7,7 +7,7 @@ import type { Item } from "@/lib/types";
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
 
-const ITEM_DELAY_MS = 500;
+const ITEM_DELAY_MS = 2000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
