@@ -49,7 +49,7 @@ function formatTooltipDate(ts: number): string {
   });
 }
 
-export function PriceChart({ itemId, itemName }: { itemId: string; itemName: string }) {
+export function PriceChart({ itemId }: { itemId: string }) {
   const [period, setPeriod] = useState<Period>("month");
   const [points, setPoints] = useState<PricePoint[]>([]);
   const [loading, setLoading] = useState(true);
@@ -81,21 +81,18 @@ export function PriceChart({ itemId, itemName }: { itemId: string; itemName: str
   }, [itemId, period]);
 
   return (
-    <div className="card">
-      <div className="chart-header">
-        <h2 style={{ margin: 0 }}>{itemName}</h2>
-        <div className="period-selector">
-          {PERIODS.map((p) => (
-            <button
-              key={p}
-              type="button"
-              className={p === period ? "period-btn active" : "period-btn"}
-              onClick={() => setPeriod(p)}
-            >
-              {PERIOD_LABELS[p]}
-            </button>
-          ))}
-        </div>
+    <div className="chart-block">
+      <div className="period-selector">
+        {PERIODS.map((p) => (
+          <button
+            key={p}
+            type="button"
+            className={p === period ? "period-btn active" : "period-btn"}
+            onClick={() => setPeriod(p)}
+          >
+            {PERIOD_LABELS[p]}
+          </button>
+        ))}
       </div>
 
       {loading && <p className="muted">Chargement…</p>}
@@ -105,7 +102,7 @@ export function PriceChart({ itemId, itemName }: { itemId: string; itemName: str
       )}
 
       {!loading && !error && points.length > 0 && (
-        <ResponsiveContainer width="100%" height={280} minWidth={280}>
+        <ResponsiveContainer width="100%" height={220} minWidth={280}>
           <LineChart data={points} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
             <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
             <XAxis

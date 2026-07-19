@@ -1,84 +1,59 @@
 import { getSupabaseAdmin } from "@/lib/supabase";
-import type { Item, LatestPrice } from "@/lib/types";
-import { PriceChart } from "@/components/PriceChart";
+import type { AlertRule, Item, LatestPrice } from "@/lib/types";
+import { ItemCard } from "@/components/ItemCard";
 
 export const dynamic = "force-dynamic";
-
-function formatTs(ts: string | undefined): string {
-  if (!ts) return "—";
-  return new Date(ts).toLocaleString("fr-FR", {
-    dateStyle: "short",
-    timeStyle: "short",
-  });
-}
 
 export default async function DashboardPage() {
   const supabase = getSupabaseAdmin();
 
-  const [{ data: items }, { data: latestPrices }] = await Promise.all([
+  const [{ data: items }, { data: latestPrices }, { data: rules }] = await Promise.all([
     supabase.from("items").select("*").order("name").returns<Item[]>(),
     supabase.from("latest_prices").select("*").returns<LatestPrice[]>(),
+    supabase
+      .from("alert_rules")
+      .select("*")
+      .order("created_at", { ascending: false })
+      .returns<AlertRule[]>(),
   ]);
 
-  const byItem = new Map<string, { buy?: LatestPrice; sell?: LatestPrice }>();
+  const pricesByItem = new Map<string, { buy?: LatestPrice; sell?: LatestPrice }>();
   for (const p of latestPrices ?? []) {
-    const entry = byItem.get(p.item_id) ?? {};
+    const entry = pricesByItem.get(p.item_id) ?? {};
     if (p.is_sell) entry.sell = p;
     else entry.buy = p;
-    byItem.set(p.item_id, entry);
+    pricesByItem.set(p.item_id, entry);
+  }
+
+  const rulesByItem = new Map<string, AlertRule[]>();
+  for (const rule of rules ?? []) {
+    const list = rulesByItem.get(rule.item_id) ?? [];
+    list.push(rule);
+    rulesByItem.set(rule.item_id, list);
   }
 
   return (
     <>
-      <h1>Prix des matériaux</h1>
       <p className="subtitle">
-        Derniers prix connus (mis à jour toutes les 5 minutes). Configure tes
-        alertes dans <a href="/rules">Règles d&apos;alerte</a>.
+        Historique des prix et alertes d&apos;achat/vente par matériau. Une
+        alerte Telegram part quand un prix franchit ton seuil, avec un délai
+        minimum entre deux alertes pour la même règle.
       </p>
 
-      <table>
-        <thead>
-          <tr>
-            <th>Matériau</th>
-            <th>Prix d&apos;achat</th>
-            <th>Prix de vente</th>
-            <th>Dernière mise à jour</th>
-          </tr>
-        </thead>
-        <tbody>
-          {(items ?? []).map((item) => {
-            const prices = byItem.get(item.id);
-            const lastTs = [prices?.buy?.ts, prices?.sell?.ts]
-              .filter(Boolean)
-              .sort()
-              .pop();
-            return (
-              <tr key={item.id}>
-                <td>{item.name}</td>
-                <td className="price-buy">
-                  {prices?.buy ? `${prices.buy.price}g` : "—"}
-                </td>
-                <td className="price-sell">
-                  {prices?.sell ? `${prices.sell.price}g` : "—"}
-                </td>
-                <td className="muted">{formatTs(lastTs)}</td>
-              </tr>
-            );
-          })}
-          {(items ?? []).length === 0 && (
-            <tr>
-              <td colSpan={4} className="muted">
-                Aucun matériau configuré.
-              </td>
-            </tr>
-          )}
-        </tbody>
-      </table>
-
-      <h2>Historique des prix</h2>
       {(items ?? []).map((item) => (
-        <PriceChart key={item.id} itemId={item.id} itemName={item.name} />
+        <ItemCard
+          key={item.id}
+          itemId={item.id}
+          itemName={item.name}
+          buyPrice={pricesByItem.get(item.id)?.buy}
+          sellPrice={pricesByItem.get(item.id)?.sell}
+          rules={rulesByItem.get(item.id) ?? []}
+        />
       ))}
+
+      {(items ?? []).length === 0 && (
+        <p className="muted">Aucun matériau configuré.</p>
+      )}
     </>
   );
 }

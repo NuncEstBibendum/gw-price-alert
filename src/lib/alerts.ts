@@ -7,7 +7,8 @@ interface RuleWithItemName extends AlertRule {
 }
 
 function isConditionMet(rule: AlertRule, price: number): boolean {
-  return rule.direction === "below" ? price <= rule.threshold : price >= rule.threshold;
+  // Buying only ever makes sense below a threshold, selling only above one.
+  return rule.type === "buy" ? price <= rule.threshold : price >= rule.threshold;
 }
 
 function isCooldownElapsed(rule: AlertRule, now: Date): boolean {
@@ -20,7 +21,7 @@ function isCooldownElapsed(rule: AlertRule, now: Date): boolean {
 function formatMessage(rule: RuleWithItemName, price: number): string {
   const itemName = rule.items?.name ?? rule.item_id;
   const action = rule.type === "buy" ? "Acheter" : "Vendre";
-  const comparison = rule.direction === "below" ? "sous" : "au-dessus de";
+  const comparison = rule.type === "buy" ? "sous" : "au-dessus de";
   return (
     `*${action}* ${itemName}\n` +
     `Prix ${rule.type === "buy" ? "d'achat" : "de vente"} : *${price}g*\n` +

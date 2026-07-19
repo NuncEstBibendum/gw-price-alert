@@ -11,13 +11,11 @@ export interface LatestPrice {
 }
 
 export type AlertType = "buy" | "sell";
-export type AlertDirection = "above" | "below";
 
 export interface AlertRule {
   id: string;
   item_id: string;
   type: AlertType;
-  direction: AlertDirection;
   threshold: number;
   cooldown_minutes: number;
   enabled: boolean;

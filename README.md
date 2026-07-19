@@ -8,8 +8,8 @@ le spam).
 
 ## Architecture
 
-- **Next.js (App Router)** hébergé sur **Vercel** : dashboard des derniers
-  prix, page de gestion des règles d'alerte, et route API `/api/ingest`.
+- **Next.js (App Router)** hébergé sur **Vercel** : page unique avec
+  graphiques de prix et gestion des alertes, plus la route API `/api/ingest`.
 - **Supabase (Postgres)** : stockage de l'historique de prix et des règles
   d'alerte.
 - **GitHub Actions** (cron toutes les 5 min) : appelle `/api/ingest` (protégé
@@ -94,7 +94,7 @@ npm install
 npm run dev
 ```
 
-Dashboard sur http://localhost:3000, règles sur http://localhost:3000/rules.
+App sur http://localhost:3000 (page unique : graphiques + gestion des alertes).
 
 Pour tester l'ingestion manuellement :
 
@@ -127,11 +127,13 @@ manuellement depuis l'onglet Actions (`workflow_dispatch`).
 
 ## Utilisation
 
-- **Dashboard (`/`)** : derniers prix d'achat/vente connus par matériau.
-- **Règles (`/rules`)** : crée une règle par matériau — type (achat/vente),
-  condition (descend sous / monte au-dessus de), seuil en or, et cooldown en
-  minutes entre deux alertes pour cette règle. Active/désactive ou supprime
-  une règle à tout moment.
+Page unique (`/`) : une carte par matériau avec son prix d'achat/vente actuel,
+son graphique d'historique (filtrable semaine/mois/année/tout), et ses
+alertes. Une alerte d'achat se déclenche quand le prix descend sous un seuil,
+une alerte de vente quand il monte au-dessus — pas de sélecteur de condition
+séparé, le sens est implicite au type de règle. Ajoute un seuil + un cooldown
+directement dans la carte du matériau concerné ; active/désactive ou supprime
+une règle existante en un clic.
 
 ## Ajouter un matériau
 
