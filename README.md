@@ -12,23 +12,27 @@ le spam).
   graphiques de prix et gestion des alertes, plus la route API `/api/ingest`.
 - **Supabase (Postgres)** : stockage de l'historique de prix et des règles
   d'alerte.
-- **GitHub Actions** (cron toutes les 5 min) : appelle `/api/ingest` (protégé
-  par un secret) pour déclencher le polling. Vercel Hobby ne permet pas de
-  cron plus fréquent qu'une fois par jour, d'où ce choix.
+- **Supabase pg_cron** (toutes les 5 min) : déclenche `/api/ingest` (protégé
+  par un secret) directement depuis Postgres via pg_net. Vercel Hobby ne
+  permet pas de cron plus fréquent qu'une fois par jour, et GitHub Actions
+  `on: schedule` s'est avéré peu fiable à 5 min (délais de plusieurs heures
+  observés en pratique) — pg_cron tourne dans la base et déclenche à l'heure.
 - **Telegram Bot API** : envoi des alertes.
 
 > **Rotation par lots** : gwtoolbox rate-limite après ~5-6 requêtes
 > séquentielles, peu importe l'espacement entre elles. `/api/ingest` ne
 > traite donc qu'un sous-ensemble d'au plus 4 matériaux par run (voir
-> `MAX_ITEMS_PER_RUN` dans [route.ts](src/app/api/ingest/route.ts)), le lot
-> étant déterminé par l'horodatage courant (pas d'état à persister). Avec 5
-> min entre chaque run, chaque matériau est donc rafraîchi toutes les
-> `5 × nombre_de_lots` minutes. Le lookback de 3 jours côté gwtoolbox comble
-> automatiquement les runs manqués.
+> `MAX_ITEMS_PER_RUN` dans [route.ts](src/app/api/ingest/route.ts)). Le lot à
+> traiter est un curseur persisté dans la table `ingest_state`, incrémenté de
+> 1 à chaque exécution réelle — pas dérivé de l'horloge, pour rester correct
+> même si des runs sont retardés ou manqués. Avec 5 min entre chaque run,
+> chaque matériau est donc rafraîchi toutes les `5 × nombre_de_lots` minutes.
+> Le lookback de 3 jours côté gwtoolbox comble automatiquement les runs
+> manqués.
 
 ```
-GitHub Actions (cron 5min)
-        │  GET /api/ingest?secret=... (ou header x-cron-secret)
+Supabase pg_cron (*/5 * * * *)
+        │  net.http_get vers /api/ingest (header x-cron-secret via Vault)
         ▼
   Vercel (Next.js)
         │  fetch gwtoolbox pricing_history pour chaque item
@@ -110,20 +114,31 @@ curl -H "x-cron-secret: <CRON_SECRET>" http://localhost:3000/api/ingest
    *Project Settings > Environment Variables*.
 4. Déploie. Note l'URL de production, ex. `https://gw-price-alerts.vercel.app`.
 
-### 6. GitHub Actions (polling toutes les 5 min)
+### 6. Polling automatique (Supabase pg_cron)
 
-Dans les *Settings > Secrets and variables > Actions* du repo GitHub, ajoute :
+1. Dans le SQL Editor Supabase, stocke le secret dans Vault (**ne commite
+   jamais cette commande avec la vraie valeur** — exécute-la directement) :
+   ```sql
+   select vault.create_secret('<valeur de CRON_SECRET>', 'cron_secret');
+   ```
+2. Applique la migration
+   [`20260719030000_add_ingest_cron.sql`](supabase/migrations/20260719030000_add_ingest_cron.sql)
+   (via `npx supabase db push` ou en collant son contenu dans le SQL
+   Editor). Elle active `pg_cron`/`pg_net` et planifie l'appel à
+   `/api/ingest` toutes les 5 minutes.
+3. Vérifie que le job tourne :
+   ```sql
+   select * from cron.job;                                  -- le job "poll-gw-prices"
+   select * from cron.job_run_details order by start_time desc limit 5;
+   ```
 
-- `CRON_SECRET` — la même valeur que sur Vercel.
-- `INGEST_URL` — `https://<ton-app>.vercel.app/api/ingest`.
+Si l'URL de production change, remets à jour l'appel dans la migration (ou
+directement via `select cron.alter_job(...)`) et republie.
 
-Le workflow [`.github/workflows/poll.yml`](.github/workflows/poll.yml) tourne
-toutes les 5 minutes et appelle cette URL. Tu peux aussi le déclencher
-manuellement depuis l'onglet Actions (`workflow_dispatch`).
-
-> Note : GitHub peut retarder légèrement les cron schedules en cas de forte
-> charge sur la plateforme ; ce n'est pas garanti à la seconde près, mais
-> largement suffisant pour du suivi de marché.
+Le workflow [`.github/workflows/poll.yml`](.github/workflows/poll.yml) ne se
+déclenche plus automatiquement ; il reste disponible pour un test manuel
+(`workflow_dispatch` depuis l'onglet Actions de GitHub), avec les mêmes
+secrets `CRON_SECRET`/`INGEST_URL` que précédemment.
 
 ## Utilisation
 

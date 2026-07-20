@@ -1,8 +1,10 @@
-name: Poll GW prices
+name: Poll GW prices (manual)
 
+# Scheduling moved to Supabase pg_cron (see
+# supabase/migrations/20260719030000_add_ingest_cron.sql) because GitHub
+# Actions' `schedule` trigger isn't reliable at 5-minute granularity - it can
+# be delayed by hours under load. This workflow is kept for manual testing.
 on:
-  schedule:
-    - cron: "*/5 * * * *"
   workflow_dispatch: {}
 
 jobs:
