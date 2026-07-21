@@ -23,6 +23,8 @@ const PERIOD_LABELS: Record<Period, string> = {
 
 const PERIODS: Period[] = ["week", "month", "year", "all"];
 
+const TIME_ZONE = "Europe/Paris";
+
 interface PricePoint {
   ts: number;
   buy: number | null;
@@ -32,20 +34,39 @@ interface PricePoint {
 function formatAxisDate(ts: number, period: Period): string {
   const date = new Date(ts);
   if (period === "week") {
-    return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" }) +
+    return (
+      date.toLocaleDateString("fr-FR", {
+        day: "2-digit",
+        month: "2-digit",
+        timeZone: TIME_ZONE,
+      }) +
       " " +
-      date.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+      date.toLocaleTimeString("fr-FR", {
+        hour: "2-digit",
+        minute: "2-digit",
+        timeZone: TIME_ZONE,
+      })
+    );
   }
   if (period === "month") {
-    return date.toLocaleDateString("fr-FR", { day: "2-digit", month: "2-digit" });
+    return date.toLocaleDateString("fr-FR", {
+      day: "2-digit",
+      month: "2-digit",
+      timeZone: TIME_ZONE,
+    });
   }
-  return date.toLocaleDateString("fr-FR", { month: "2-digit", year: "2-digit" });
+  return date.toLocaleDateString("fr-FR", {
+    month: "2-digit",
+    year: "2-digit",
+    timeZone: TIME_ZONE,
+  });
 }
 
 function formatTooltipDate(ts: number): string {
   return new Date(ts).toLocaleString("fr-FR", {
     dateStyle: "medium",
     timeStyle: "short",
+    timeZone: TIME_ZONE,
   });
 }
 

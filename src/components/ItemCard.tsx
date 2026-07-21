@@ -14,7 +14,11 @@ function formatTs(ts: string | undefined): string {
   if (!ts) return "Pas encore de données";
   return (
     "Mis à jour " +
-    new Date(ts).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })
+    new Date(ts).toLocaleString("fr-FR", {
+      dateStyle: "short",
+      timeStyle: "short",
+      timeZone: "Europe/Paris",
+    })
   );
 }
 
